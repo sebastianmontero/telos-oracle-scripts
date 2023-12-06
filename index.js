@@ -18,6 +18,8 @@ const config = configLoader.load();
 if(!config){
     throw('/!\\ Stopping. Failed to load config. See errors above ^');
 }
+console.log('Configuration:')
+console.log(JSON.stringify(config, null, 4))
 
 // Instantiate services & variables
 const rpc = new JsonRpc(config.antelope.rpc, { fetch });

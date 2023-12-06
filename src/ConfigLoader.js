@@ -1,3 +1,4 @@
+require('dotenv').config()
 const yaml = require('js-yaml');
 const fs   = require('fs');
 
@@ -106,7 +107,13 @@ class ConfigLoader {
                             for(var c = 0; c < element.children.length; c++) {
                                 if (!config_element[element.children[c]])
                                 {
-                                    this.errors.push('Missing '+ element.children[c] +' in '+ this.listeners[i].name +' > '+ element.name +' listener configuration.');
+                                    if(element.children[c] === 'private_key' && process.env.PRIVATE_KEY) {
+                                        config_element[element.children[c]] = process.env.PRIVATE_KEY
+                                    } else if(element.children[c] === 'signing_key' && process.env.SIGNING_KEY) {
+                                        config_element[element.children[c]] = process.env.SIGNING_KEY
+                                    } else {
+                                        this.errors.push('Missing '+ element.children[c] +' in '+ this.listeners[i].name +' > '+ element.name +' listener configuration.');
+                                    }
                                 }
                             }
                         }

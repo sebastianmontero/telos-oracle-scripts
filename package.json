@@ -8,7 +8,7 @@
     "@eosrio/hyperion-stream-client": "1.0.3",
     "@supercharge/promise-pool": "^2.3.2",
     "@telosnetwork/telosevm-js": "^0.2.8",
-    "dotenv": "^9.0.0",
+    "dotenv": "^9.0.2",
     "eosjs": "^22.1",
     "eosjs-ecc": "^4.0.7",
     "ethers": "^5.7.0",
