@@ -2,7 +2,8 @@ const yaml = require('js-yaml');
 const fs   = require('fs');
 
 class ConfigLoader {
-    constructor(){
+    constructor(filePath){
+        this.filePath = filePath
         this.errors = [];
         this.listeners = [
             {
@@ -62,7 +63,7 @@ class ConfigLoader {
     }
     load(){
         try {
-            let config = yaml.load(fs.readFileSync(__dirname + '/../config.yml', 'utf8'))
+            let config = yaml.load(fs.readFileSync(this.filePath, 'utf8'))
             if(this.check(config)){
                 return config;
             }

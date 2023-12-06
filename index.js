@@ -8,8 +8,12 @@ const { TelosEvmApi } = require("@telosnetwork/telosevm-js");
 const fetch = require('node-fetch');
 const ethers = require("ethers");
 
+if(process.argv.length < 3){
+    throw('config file path must be provided as argument')
+}
+
 // Read config
-const configLoader = new ConfigLoader("config.yml");
+const configLoader = new ConfigLoader(process.argv[2]);
 const config = configLoader.load();
 if(!config){
     throw('/!\\ Stopping. Failed to load config. See errors above ^');
