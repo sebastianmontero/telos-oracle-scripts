@@ -57,21 +57,9 @@ You will find a description of each configuration item below.
 
 ### > Antelope
 
-#### Caller
-
-This part of the configuration pertains to your own creditenials, it is required for listeners & updaters that need to perform actions on chain like the `RNGRequestListener` and the `DelphiOracleUpdater`.
-
-```
-    name: "oracletest" # Your antelope account name
-    permission: "active" 
-    private_key: "5J2..."
-    signing_key: "5J2..."
-```
-
 #### RPC / Hyperion
 
 Endpoint configuration for Antelope.
-
 
 ```
   rpc: "https://testnet.telos.caleos.io"
@@ -100,6 +88,11 @@ Endpoint configuration for EVM.
 
 ```
       account: "delphioracle"
+      caller:
+        name: "oracletest" # Your antelope account name
+        permission: "active" # Your antelope permission
+        private_key: "5J2..." # Your antelope private key
+        signing_key: "5J2..." # Your antelope signing key
       bridge:
         account: "delphibridge"
         active: true
@@ -113,6 +106,11 @@ Endpoint configuration for EVM.
 
 ```
       account: "rng.oracle"
+      caller:
+        name: "oracletest" # Your antelope account name
+        permission: "active" # Your antelope permission
+        private_key: "5J2..." # Your antelope private key
+        signing_key: "5J2..." # Your antelope signing key
       request:
         active: true
         check_interval_ms: 30000 # This will override the general listeners one defined previously
@@ -130,6 +128,11 @@ Endpoint configuration for EVM.
 
 ```
       account: "eosio.evm"
+      caller:
+        name: "oracletest" # Your antelope account name
+        permission: "active" # Your antelope permission
+        private_key: "5J2..." # Your antelope private key
+        signing_key: "5J2..." # Your antelope signing key
       bridge:
         active: true
         check_interval_ms: 3000 # This will override the general listeners one defined previously
