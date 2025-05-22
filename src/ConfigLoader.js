@@ -87,6 +87,13 @@ class ConfigLoader {
         if(!config.antelope){
             this.errors.push('Missing antelope configuration.');
         }
+        if(!this.validateEndpoints(config.antelope.rpc)){
+            this.errors.push('Invalid antelope.rpc configuration. Is not a valid URL or an array of valid URLs.');
+        }
+        if(!this.validateEndpoints(config.antelope.hyperion)){
+            this.errors.push('Invalid antelope.hyperion configuration. Is not a valid URL or an array of valid URLs.');
+        }
+
         if(!config.evm){
             this.errors.push('Missing EVM configuration.');
         }
@@ -139,6 +146,30 @@ class ConfigLoader {
         }
         return true;
     }
+
+    
+    /**
+     * Validate a list of endpoints
+     * @param {string | Array<string>} endpoints - List of endpoints to validate
+     * @returns {boolean} - True if valid, false otherwise
+     */
+    validateEndpoints(endpoints){
+        if(typeof endpoints === 'string'){
+            endpoints = [endpoints];
+        }
+        if(endpoints.length === 0){
+            return false;
+        }
+        for(var i = 0; i < endpoints.length; i++){
+            try {
+                new URL(endpoints[i]);
+            } catch (_) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 }
 
 module.exports = ConfigLoader;

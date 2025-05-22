@@ -87,7 +87,8 @@ class Listener {
 
         this.streamClient.on(StreamClientEvents.LIBUPDATE, (data) => {
             // What is that ???
-            this.log(data);
+            this.log(`Lib Update: ${JSON.stringify(data, null, 2)}`);
+            this.lastReceivedBlock = data.block_num;
         });
 
         this.streamClient.on('connect', () => {
@@ -103,26 +104,28 @@ class Listener {
         });
 
         this.streamClient.setAsyncDataHandler(async (data) => {
-            this.lastReceivedBlock = data.block_num;
+            this.log(`Data: ${JSON.stringify(data, null, 2)}`);
             if (data.content.present && scope === nameToInt(data.content.scope) || data.content.present && scope === data.content.scope.toString()) {
                 this.log(`${name}: Data received from Hyperion Stream...`);
                 await callback(data.content.data);
             }
         });
 
-        await this.streamClient.connect();
-
         let interval = setInterval(async () => {
-            if(this.lastReceivedBlock !== 0){
-                let getInfo = await this.rpc.get_info();
-                if(this.max_block_diff < ( getInfo.head_block_num - this.lastReceivedBlock)){
-                    clearInterval(interval);
-                    this.log(`${name}: Restarting Hyperion Stream...`);
-                    await this.streamClient.disconnect();
-                    await this.startStream(name, account, table, scope, callback);
-                }
+            this.log(`Interval: ${this.lastReceivedBlock} ${this.streamClient.online}`);
+            let getInfo = await this.rpc.get_info();
+            if(this.max_block_diff < ( getInfo.head_block_num - this.lastReceivedBlock)){
+                clearInterval(interval);
+                this.log(`${name}: Restarting Hyperion Stream...`);
+                await this.streamClient.disconnect();
+                await this.startStream(name, account, table, scope, callback);
             }
         }, this.check_interval_ms);
+
+        await this.streamClient.connect();
+        console.log(`${name}: Hyperion Stream started !`);
+
+        
 
         return;
     }

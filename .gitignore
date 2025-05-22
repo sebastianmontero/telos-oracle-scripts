@@ -1,6 +1,7 @@
 node_modules
 .env
 config.yml
+config-*.yml
 package-lock.json
 yarn.lock
 .idea

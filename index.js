@@ -2,7 +2,7 @@ const { RNGRequestListener, RNGBridgeListener, DelphiBridgeListener, GasBridgeLi
 const { DelphiOracleUpdater }  = require('./src/updaters');
 const DelphiOracleCallbacks  = require('./src/callbacks/DelphiOracleCallbacks');
 const ConfigLoader = require('./src/ConfigLoader');
-const Eos = require('eosjs');
+const Eos = require('@smontero/eosjs');
 const JsonRpc = Eos.JsonRpc;
 const { TelosEvmApi } = require("@telosnetwork/telosevm-js");
 const fetch = require('node-fetch');
