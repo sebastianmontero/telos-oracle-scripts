@@ -5,14 +5,16 @@ async function run() {
   const client = new HyperionStreamClient({
     endpoints: 'https://eos.hyperion.eosrio.io',
     debug: true,
-    libStream: false
+    libStream: false,
+    tryForever: true,
+    libActivityTimeoutMs: 4000
   });
   client.on(StreamClientEvents.LIBUPDATE, (data) => {
     // What is that ??
     console.log(data);
   });
-  client.on('connect', () => {
-    console.log('Connected to Hyperion Stream ...');
+  client.once('connect', () => {
+    console.log('####Connected to Hyperion Stream ...####');
     client.streamDeltas({
       code: 'rng.beny',
       table: 'rngrequests',
@@ -20,6 +22,12 @@ async function run() {
       payer: '',
       start_from: 432313000,
       read_until: 0
+    });
+    client.on(StreamClientEvents.LIBACTIVITY_TIMEOUT, () => {
+      console.log('####Lib Activity Timeout from Hyperion Stream ...####');
+    });
+    client.on(StreamClientEvents.DISCONNECT, () => {
+      console.log('####Disconnected from Hyperion Stream ...####');
     });
   });
   client.setAsyncDataHandler(async (data) => {
