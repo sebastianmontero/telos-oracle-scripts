@@ -3,7 +3,9 @@ const { HyperionStreamClient, StreamClientEvents } = require("@eosrio/hyperion-s
 
 async function run() {
   const client = new HyperionStreamClient({
-    endpoint: 'https://jungle.eosusa.io',
+    // endpoint: 'https://jungle.eosusa.io',
+    endpoint: 'https://eos.hyperion.eosrio.io',
+    endpoint: 'https://telos.caleos.io',
     debug: true,
     libStream: false
   });
@@ -11,8 +13,8 @@ async function run() {
     // What is that ??
     console.log(data);
   });
-  client.on('connect', () => {
-    console.log('Connected to Hyperion Stream ...');
+  client.once('connect', () => {
+    console.log('##Connected to Hyperion Stream ...##');
     // client.streamDeltas({
     //   code: 'bennyrngorac',
     //   table: 'rngrequests',
@@ -21,6 +23,16 @@ async function run() {
     //   start_from: -1,
     //   read_until: 0
     // });
+
+    client.streamDeltas({
+      code: 'rng.beny',
+      table: 'rngrequests',
+      scope: 'rng.beny',
+      payer: '',
+      // start_from: 432313038,
+      start_from: -1,
+      read_until: 0
+    });
   });
   client.setAsyncDataHandler(async (data) => {
     console.log(data);

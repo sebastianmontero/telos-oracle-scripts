@@ -17,6 +17,7 @@ class Listener {
         this.caller = caller;
         this.oracle = oracle;
         this.check_interval_ms = config.check_interval_ms;
+        this.heartbeat_interval_blocks = Number(config.heartbeat_interval_seconds) * 2;
         this.max_block_diff = config.max_block_diff;
         this.hyperion = hyperion;
         this.rpc = rpc;
@@ -26,6 +27,7 @@ class Listener {
         this.checking_table = false;
         this.next_key = '';
         this.lastReceivedBlock = 0;
+        this.lastHeartbeatBlock = 0;
         this.streamClient = new HyperionStreamClient({
             endpoint: hyperion,
             debug: true,
@@ -82,16 +84,22 @@ class Listener {
     async startStream(name, account, table, scope, callback){
         let getInfo = await this.rpc.get_info();
         let headBlock = getInfo.head_block_num;
+        this.lastHeartbeatBlock = headBlock;
         this.lastReceivedBlock = headBlock - 1;
         this.log(`${name}: Starting Hyperion Stream ...`);
 
-        this.streamClient.on(StreamClientEvents.LIBUPDATE, (data) => {
-            // What is that ???
-            this.log(`Lib Update: ${JSON.stringify(data, null, 2)}`);
+        const libUpdateListener = (data) => {
+            // What is that ??
+            if((data.block_num - this.lastHeartbeatBlock) > this.heartbeat_interval_blocks){
+                this.lastHeartbeatBlock = data.block_num;
+                console.log(`Listener Heartbeat: ${JSON.stringify(data, null, 2)}`);
+            }
             this.lastReceivedBlock = data.block_num;
-        });
+        };
 
-        this.streamClient.on('connect', () => {
+        this.streamClient.on(StreamClientEvents.LIBUPDATE, libUpdateListener);
+
+        const connectListener = () => {
             this.log(`${name}: Connected to Hyperion Stream ...`);
             this.streamClient.streamDeltas({
                 code: account,
@@ -101,7 +109,9 @@ class Listener {
                 start_from: -1,
                 read_until: 0,
             });
-        });
+        };
+
+        this.streamClient.once(StreamClientEvents.CONNECT, connectListener);
 
         this.streamClient.setAsyncDataHandler(async (data) => {
             this.log(`Data: ${JSON.stringify(data, null, 2)}`);
@@ -114,9 +124,11 @@ class Listener {
         let interval = setInterval(async () => {
             this.log(`Interval: ${this.lastReceivedBlock} ${this.streamClient.online}`);
             let getInfo = await this.rpc.get_info();
-            if(this.max_block_diff < ( getInfo.head_block_num - this.lastReceivedBlock)){
+            if(true || this.max_block_diff < ( getInfo.head_block_num - this.lastReceivedBlock)){
                 clearInterval(interval);
                 this.log(`${name}: Restarting Hyperion Stream...`);
+                this.streamClient.off(StreamClientEvents.LIBUPDATE, libUpdateListener)
+                this.streamClient.off(StreamClientEvents.CONNECT, connectListener)
                 await this.streamClient.disconnect();
                 await this.startStream(name, account, table, scope, callback);
             }
