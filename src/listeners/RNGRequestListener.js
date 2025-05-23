@@ -23,17 +23,18 @@ class RNGRequestListener extends Listener {
         if (typeof this.caller.signing_key === "undefined" ){
             this.log('/!\\ RNG Oracle Request: Signing key is undefined. RNG Oracle Request script will not try to sign requests.')
         }
+        
+        // RPC TABLE CHECK
+        await this.doTableCheck();
+        setInterval(async () => {
+            await this.doTableCheck();
+        }, this.check_interval_ms)
 
         // Awaiting hyperion node updates
         // HYPERION STREAM
         await super.startStream("RNG Oracle Request", this.oracle, REQUESTS_TABLE, this.oracle, async (data) => {
            await this.signRow(data);
         });
-        // RPC TABLE CHECK
-        await this.doTableCheck();
-        setInterval(async () => {
-            await this.doTableCheck();
-        }, this.check_interval_ms)
     }
 
     async doTableCheck(){

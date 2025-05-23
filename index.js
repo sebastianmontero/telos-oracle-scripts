@@ -9,13 +9,23 @@ const configLoader = new ConfigLoader();
 const config = configLoader.getConfig();
 
 console.log('Configuration:')
-console.log(JSON.stringify(config, null, 4))
+const configClone = JSON.parse(JSON.stringify(config));
+configClone.scripts.listeners.rng.caller.private_key = "****";
+configClone.scripts.listeners.rng.caller.signing_key = "****";
+console.log(JSON.stringify(configClone, null, 4));
+
 
 // Instantiate services & variables
 const rpc = new JsonRpc(config.antelope.rpc, { fetch });
 
 const listeners = config.scripts.listeners;
 
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection:', reason);
+    console.error('Promise:', promise);
+    console.error('Stack:', reason.stack);
+    process.exit(1);
+});
 
 // // Delphi Bridge Listener
 // if(listeners.delphi.bridge.active){
