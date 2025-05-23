@@ -1,175 +1,220 @@
 require('dotenv').config()
-const yaml = require('js-yaml');
-const fs   = require('fs');
-
 class ConfigLoader {
-    constructor(filePath){
-        this.filePath = filePath
-        this.errors = [];
-        this.listeners = [
-            {
-                name: 'delphi',
-                children: [
-                    {
-                        name: 'account'
-                    },
-                    {
-                        name: 'bridge',
-                        children: ["eosio_evm_scope", "account", "evm_contract"]
-                    },
-                    {
-                        name: 'caller',
-                        children: ['name','permission','private_key','signing_key']
-                    }
-                ]
+    #config;
+    #schema = {
+        ANTELOPE_RPC: {
+            path: ['antelope', 'rpc'],
+            type: 'string[]',
+            required: true,
+            validator: (value) => {
+                if (!Array.isArray(value) || value.length === 0) {
+                    return 'ANTELOPE_RPC must be a non-empty list of URLs.';
+                }
+                if (!value.every(this.#isValidUrl)) {
+                    return 'Invalid URL found in ANTELOPE_RPC.';
+                }
+                return true;
             },
-            {
-                name: 'rng',
-                children: [
-                    {name: 'account'},
-                    {name: 'bridge', children: ["eosio_evm_scope", "account", "linked_evm_address", "evm_contract"]},
-                    {name: 'request', children: []},
-                    {
-                        name: 'caller',
-                        children: ['name','permission','private_key','signing_key']
-                    }
-                ]
+        },
+        ANTELOPE_HYPERION: {
+            path: ['antelope', 'hyperion'],
+            type: 'string[]',
+            required: true,
+            validator: (value) => {
+                if (!Array.isArray(value) || value.length === 0) {
+                    return 'ANTELOPE_HYPERION must be a non-empty list of URLs.';
+                }
+                if (!value.every(this.#isValidUrl)) {
+                    return 'Invalid URL found in ANTELOPE_HYPERION.';
+                }
+                return true;
             },
-            {
-                name: 'gas',
-                children: [
-                    {name: 'account' },
-                    {name: 'bridge', children: ["account", "evm_contract"] },
-                    {
-                        name: 'caller',
-                        children: ['name','permission','private_key','signing_key']
-                    }
-                ]
-            }
-        ];
-        this.updaters = [
-            {
-                name: 'delphi',
-                children: [
-                    {name: 'services'},
-                    {name: 'account'},
-                    {name: 'update_interval_ms'},
-                    {
-                        name: 'caller',
-                        children: ['name','permission','private_key']
-                    }
-                ]
-            }
-        ];
+        },
+        SCRIPTS_LISTENERS_CONSOLE_LOG: {
+            path: ['scripts', 'listeners', 'console_log'],
+            type: 'boolean',
+            // Not strictly required, app can default to false if undefined
+        },
+        SCRIPTS_LISTENERS_MAX_BLOCK_DIFF: {
+            path: ['scripts', 'listeners', 'max_block_diff'],
+            type: 'number',
+            required: true,
+            validator: (value) => (Number.isInteger(value) && value >= 0) || 'Must be a non-negative integer',
+        },
+        SCRIPTS_LISTENERS_CHECK_INTERVAL_MS: {
+            path: ['scripts', 'listeners', 'check_interval_ms'],
+            type: 'number',
+            required: true,
+            validator: (value) => (Number.isInteger(value) && value > 0) || 'Must be a positive integer',
+        },
+        SCRIPTS_LISTENERS_TRX_BATCH_SIZE: {
+            path: ['scripts', 'listeners', 'trx_batch_size'],
+            type: 'number',
+            required: true,
+            validator: (value) => (Number.isInteger(value) && value > 0) || 'Must be a positive integer',
+        },
+        SCRIPTS_LISTENERS_HEARTBEAT_INTERVAL_SECONDS: {
+            path: ['scripts', 'listeners', 'heartbeat_interval_seconds'],
+            type: 'number',
+            required: true,
+            validator: (value) => (Number.isInteger(value) && value > 0) || 'Must be a positive integer',
+        },
+        SCRIPTS_LISTENERS_RNG_CALLER_NAME: {
+            path: ['scripts', 'listeners', 'rng', 'caller', 'name'],
+            type: 'string',
+            required: true,
+            validator: (value) => this.#isEosioAccountName(value) || 'Invalid EOSIO account name format',
+        },
+        SCRIPTS_LISTENERS_RNG_CALLER_PERMISSION: {
+            path: ['scripts', 'listeners', 'rng', 'caller', 'permission'],
+            type: 'string',
+            required: true,
+            validator: (value) => this.#isEosioAccountName(value) || 'Invalid EOSIO permission name format',
+        },
+        SCRIPTS_LISTENERS_RNG_CALLER_PRIVATE_KEY: {
+            path: ['scripts', 'listeners', 'rng', 'caller', 'private_key'],
+            type: 'string',
+            required: true,
+            validator: (value) => this.#isEosioPrivateKey(value) || 'Invalid EOSIO private key format',
+        },
+        SCRIPTS_LISTENERS_RNG_CALLER_SIGNING_KEY: {
+            path: ['scripts', 'listeners', 'rng', 'caller', 'signing_key'],
+            type: 'string',
+            required: true,
+            validator: (value) => this.#isEosioPrivateKey(value) || 'Invalid EOSIO private key format',
+        },
+        SCRIPTS_LISTENERS_RNG_ACCOUNT: {
+            path: ['scripts', 'listeners', 'rng', 'account'],
+            type: 'string',
+            required: true,
+            validator: (value) => this.#isEosioAccountName(value) || 'Invalid EOSIO account name format',
+        },
+        SCRIPTS_LISTENERS_RNG_REQUEST_ACTIVE: {
+            path: ['scripts', 'listeners', 'rng', 'request', 'active'],
+            type: 'boolean',
+            required: true, // Application logic likely depends on this being explicitly true/false
+        },
+        SCRIPTS_LISTENERS_RNG_REQUEST_CHECK_INTERVAL_MS: {
+            path: ['scripts', 'listeners', 'rng', 'request', 'check_interval_ms'],
+            type: 'number',
+            required: true,
+            validator: (value) => (Number.isInteger(value) && value > 0) || 'Must be a positive integer',
+        },
+    };
+
+    constructor() {
+        this.#config = {};
+        this.#loadAndValidate();
+        Object.freeze(this.#config);
     }
-    load(){
+
+    getConfig() {
+        return this.#config;
+    }
+
+    #loadAndValidate() {
+        for (const envVarName in this.#schema) {
+            const item = this.#schema[envVarName];
+            const envValue = process.env[envVarName];
+            let parsedValue;
+
+            if (envValue === undefined) {
+                if (item.required) {
+                    throw new Error(`Missing required environment variable: ${envVarName}`);
+                }
+                // For non-required, non-set variables, parsedValue remains undefined.
+                // This will result in the key having 'undefined' as its value in the config.
+                parsedValue = undefined;
+            } else {
+                // If env var is set (even to empty string), try to parse it.
+                // #parseValue will throw if it's an invalid format for the type.
+                parsedValue = this.#parseValue(envValue, item.type, envVarName);
+            }
+
+            // Run validator if it exists.
+            // For required fields, parsedValue will be defined here (or an error thrown above).
+            // For non-required fields that were set, parsedValue will be the parsed value.
+            // For non-required fields that were NOT set, parsedValue is undefined;
+            //   validators should generally not run on undefined unless designed for it.
+            //   Our current validators assume a value is present.
+            if (item.validator) {
+                 // If parsedValue is undefined (for a non-required field that wasn't set),
+                 // we typically don't validate. However, if a field is required,
+                 // parsedValue will not be undefined at this point.
+                 // The validators for RPC/Hyperion expect an array, even if empty initially from parseValue.
+                if (parsedValue !== undefined || item.type === 'string[]') { // Special handling for string[] which can be []
+                    const validationResult = item.validator(parsedValue);
+                    if (typeof validationResult === 'string') {
+                        throw new Error(`Validation failed for ${envVarName}: ${validationResult}. Value: ${JSON.stringify(parsedValue)}`);
+                    }
+                }
+            }
+            this.#setValueByPath(this.#config, item.path, parsedValue);
+        }
+    }
+
+    #parseValue(valueStr, type, envVarName) {
+        // valueStr is guaranteed to be a string here, as it comes from process.env
+        const strVal = String(valueStr).trim();
+
+        switch (type) {
+            case 'string':
+                return strVal;
+            case 'boolean':
+                if (strVal.toLowerCase() === 'true') return true;
+                if (strVal.toLowerCase() === 'false') return false;
+                throw new Error(`Invalid boolean value for ${envVarName}: "${strVal}". Expected "true" or "false".`);
+            case 'number':
+                // Handle empty string explicitly for numbers if it should be invalid
+                if (strVal === "") {
+                    throw new Error(`Invalid number value for ${envVarName}: received an empty string.`);
+                }
+                const num = Number(strVal);
+                if (isNaN(num)) {
+                    throw new Error(`Invalid number value for ${envVarName}: "${strVal}".`);
+                }
+                return num;
+            case 'string[]':
+                if (strVal === "") return []; // An empty env var for an array results in an empty array
+                return strVal.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            default:
+                throw new Error(`Unknown type "${type}" for ${envVarName}`);
+        }
+    }
+
+    #setValueByPath(obj, path, value) {
+        let current = obj;
+        for (let i = 0; i < path.length - 1; i++) {
+            const key = path[i];
+            if (!current[key] || typeof current[key] !== 'object') {
+                current[key] = {};
+            }
+            current = current[key];
+        }
+        current[path[path.length - 1]] = value;
+    }
+
+    #isValidUrl(urlString) {
+        if (typeof urlString !== 'string' || urlString.trim() === '') return false;
         try {
-            let config = yaml.load(fs.readFileSync(this.filePath, 'utf8'))
-            if(this.check(config)){
-                return config;
-            }
+            new URL(urlString);
+            return true;
         } catch (e) {
-            this.errors.push('Could not load config: ' + e.message);
-            this.print();
-        }
-        return false;
-    }
-    print(){
-        console.log("-------------------------------------------------");
-        console.log("\nErrors encountered when loading configuration:\n");
-        for(var i = 0; i < this.errors.length; i++){
-            console.log("o " + this.errors[i]);
-        }
-        console.log("\nPlease refer to the config.yml.sample for proper configuration\n");
-        console.log("-------------------------------------------------");
-    }
-    check(config){
-        if(!config.antelope){
-            this.errors.push('Missing antelope configuration.');
-        }
-        if(!this.validateEndpoints(config.antelope.rpc)){
-            this.errors.push('Invalid antelope.rpc configuration. Is not a valid URL or an array of valid URLs.');
-        }
-        if(!this.validateEndpoints(config.antelope.hyperion)){
-            this.errors.push('Invalid antelope.hyperion configuration. Is not a valid URL or an array of valid URLs.');
-        }
-
-        if(!config.evm){
-            this.errors.push('Missing EVM configuration.');
-        }
-        if(!config.scripts || !config.scripts.listeners || !config.scripts.updaters){
-            this.errors.push('Missing scripts configuration.');
-        } else {
-            for(var i = 0; i < this.listeners.length; i++){
-                if(!config.scripts.listeners[this.listeners[i].name]){
-                    this.errors.push('Missing '+ this.listeners[i].name +' listener configuration.');
-                } else if(this.listeners[i].children) {
-                    for(var k = 0; k < this.listeners[i].children.length; k++) {
-                        var config_element = config.scripts.listeners[this.listeners[i].name][this.listeners[i].children[k].name];
-                        var element = this.listeners[i].children[k];
-                        if (!config_element)
-                        {
-                            this.errors.push('Missing '+ element.name +' in '+ this.listeners[i].name +' listener configuration.');
-                        } else if(element.children) {
-                            for(var c = 0; c < element.children.length; c++) {
-                                if (!config_element[element.children[c]])
-                                {
-                                    if(element.children[c] === 'private_key' && process.env.PRIVATE_KEY) {
-                                        config_element[element.children[c]] = process.env.PRIVATE_KEY
-                                    } else if(element.children[c] === 'signing_key' && process.env.SIGNING_KEY) {
-                                        config_element[element.children[c]] = process.env.SIGNING_KEY
-                                    } else {
-                                        this.errors.push('Missing '+ element.children[c] +' in '+ this.listeners[i].name +' > '+ element.name +' listener configuration.');
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            for(var i = 0; i < this.updaters.length; i++){
-                if(!config.scripts.updaters[this.updaters[i].name]){
-                    this.errors.push('Missing '+ this.updaters[i].name +' updater configuration.');
-                } else
-                {
-                    for(var k = 0; k < this.updaters[i].children.length; k++) {
-                        if (!config.scripts.updaters[this.updaters[i].name][this.updaters[i].children[k].name]){
-                            this.errors.push('Missing '+ this.updaters[i].children[k].name +' in '+ this.updaters[i].name +' updater configuration.');
-                        }
-                    }
-                }
-            }
-        }
-        if(this.errors.length > 0){
-            this.print();
             return false;
         }
-        return true;
     }
 
-    
-    /**
-     * Validate a list of endpoints
-     * @param {string | Array<string>} endpoints - List of endpoints to validate
-     * @returns {boolean} - True if valid, false otherwise
-     */
-    validateEndpoints(endpoints){
-        if(typeof endpoints === 'string'){
-            endpoints = [endpoints];
-        }
-        if(endpoints.length === 0){
-            return false;
-        }
-        for(var i = 0; i < endpoints.length; i++){
-            try {
-                new URL(endpoints[i]);
-            } catch (_) {
-                return false;
-            }
-        }
-        return true;
+    #isEosioAccountName(name) {
+        if (typeof name !== 'string') return false;
+        const regex = /^[a-z1-5.]{1,12}$/;
+        const regexLong = /^[a-z1-5]{1,12}[.][a-z1-5]{1,12}$/;
+        if (name === 'eosio') return true;
+        return regex.test(name) || (name.length === 13 && name.includes('.') && !name.startsWith('.') && !name.endsWith('.') && regexLong.test(name));
     }
 
+    #isEosioPrivateKey(key) {
+        return typeof key === 'string' && key.startsWith('5') && key.length === 51;
+    }
 }
 
 module.exports = ConfigLoader;
