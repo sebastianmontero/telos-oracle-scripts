@@ -5,8 +5,8 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "@eosrio/hyperion-stream-client": "^1.0.3",
     "@smontero/eosjs": "^22.2.0",
+    "@smontero/hyperion-stream-client": "^1.0.5",
     "@supercharge/promise-pool": "^2.3.2",
     "@telosnetwork/telosevm-js": "^0.2.8",
     "dotenv": "^9.0.2",

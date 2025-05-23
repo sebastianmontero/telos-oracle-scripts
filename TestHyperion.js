@@ -1,13 +1,15 @@
-const { HyperionStreamClient, StreamClientEvents } = require("@eosrio/hyperion-stream-client");
+const { HyperionStreamClient, StreamClientEvents } = require("@smontero/hyperion-stream-client");
 
 
 async function run() {
   const client = new HyperionStreamClient({
-    endpoint: 'https://jungle.eosusa.io',
+    endpoints: ['https://jungle.eosusa.io'],
     // endpoint: 'https://eos.hyperion.eosrio.io',
     // endpoint: 'https://telos.caleos.io',
     debug: true,
-    libStream: false
+    libStream: false,
+    tryForever: true,
+    libActivityTimeoutMs: 10000
   });
   client.on(StreamClientEvents.LIBUPDATE, (data) => {
     // What is that ??

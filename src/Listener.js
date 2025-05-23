@@ -1,4 +1,4 @@
-const { HyperionStreamClient, StreamClientEvents } = require("@eosrio/hyperion-stream-client");
+const { HyperionStreamClient, StreamClientEvents } = require("@smontero/hyperion-stream-client");
 const nameToInt = require('./utils/anteloppeName');
 const util = require('util');
 const JsSignatureProvider = require('eosjs/dist/eosjs-jssig').JsSignatureProvider;
@@ -29,9 +29,11 @@ class Listener {
         this.lastReceivedBlock = 0;
         this.lastHeartbeatBlock = 0;
         this.streamClient = new HyperionStreamClient({
-            endpoint: hyperion,
+            endpoints: hyperion,
             debug: true,
-            libStream: false
+            libStream: false,
+            tryForever: true,
+            libActivityTimeoutMs: 10000
         });
         const signatureProvider = new JsSignatureProvider([caller.private_key]);
         this.api = new Api({
