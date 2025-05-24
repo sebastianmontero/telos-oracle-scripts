@@ -32,8 +32,12 @@ class RNGRequestListener extends Listener {
 
         // Awaiting hyperion node updates
         // HYPERION STREAM
+        await this.startHyperionStream();
+    }
+
+    async startHyperionStream(){
         await super.startStream("RNG Oracle Request", this.oracle, REQUESTS_TABLE, this.oracle, async (data) => {
-           await this.signRow(data);
+            await this.signRow(data);
         });
     }
 

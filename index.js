@@ -20,13 +20,6 @@ const rpc = new JsonRpc(config.antelope.rpc, { fetch });
 
 const listeners = config.scripts.listeners;
 
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection:', reason);
-    console.error('Promise:', promise);
-    console.error('Stack:', reason.stack);
-    process.exit(1);
-});
-
 // // Delphi Bridge Listener
 // if(listeners.delphi.bridge.active){
 //     const delphiBridgeListener = new DelphiBridgeListener(listeners.delphi.account, rpc, evm_provider, evm_api, config.scripts.listeners, config.antelope.hyperion)
@@ -44,8 +37,9 @@ process.on('unhandledRejection', (reason, promise) => {
 //     rngBridgeListener.start();
 // }
 // RNG Requests Listener
+let rngRequestListener;
 if(listeners.rng.request.active){
-    const rngRequestListener = new RNGRequestListener(listeners.rng.account, rpc, config.scripts.listeners, config.antelope.hyperion[0])
+    rngRequestListener = new RNGRequestListener(listeners.rng.account, rpc, config.scripts.listeners, config.antelope.hyperion[0])
     rngRequestListener.start();
 }
 // // Gas Bridge Listener
@@ -53,3 +47,15 @@ if(listeners.rng.request.active){
 //     const gasBridgeListener = new GasBridgeListener(listeners.gas.account, rpc, evm_provider, evm_api, config.scripts.listeners, config.antelope.hyperion)
 //     gasBridgeListener.start();
 // }
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection:', reason);
+    if(rngRequestListener){
+        console.log('Stopping stream and restarting in ' + config.scripts.listeners.check_interval_ms + 'ms...');
+        rngRequestListener.stopStream();
+        setTimeout(() => {
+            console.log('Restarting stream...');
+            rngRequestListener.startHyperionStream();
+        }, config.scripts.listeners.check_interval_ms);
+    }
+});
