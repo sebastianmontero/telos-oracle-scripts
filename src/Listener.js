@@ -17,8 +17,9 @@ class Listener {
         this.caller = caller;
         this.oracle = oracle;
         this.check_interval_ms = config.check_interval_ms;
-        this.heartbeat_interval_blocks = Number(config.heartbeat_interval_seconds) * 2;
-        this.max_block_diff = config.max_block_diff;
+        this.heartbeat_interval_seconds = config.heartbeat_interval_seconds;
+        this.max_blocks_behind = config.max_blocks_behind;
+        this.missed_heartbeats_for_restart = config.missed_heartbeats_for_restart;
         this.hyperion = hyperion;
         this.rpc = rpc;
         this.trx_batch_size = config.trx_batch_size;
@@ -82,15 +83,18 @@ class Listener {
 
     // HYPERION STREAM
     async startStream(name, account, table, scope, callback){
-        let getInfo = await this.rpc.get_info();
-        let headBlock = getInfo.head_block_num;
-        this.lastHeartbeatBlock = headBlock;
-        this.lastReceivedBlock = headBlock - 1;
+        this.lastHeartbeatBlock = null;
+        this.lastReceivedBlock = null;
+        this.lastHeartbeatTime = Date.now();
         this.log(`${name}: Starting Hyperion Stream ...`);
 
-        this.libUpdateListener = (data) => {
+        this.libUpdateListener = async (data) => {
+            if(this.lastHeartbeatBlock === null){
+                this.lastHeartbeatBlock = data.block_num;
+            }
             // What is that ??
-            if((data.block_num - this.lastHeartbeatBlock) > this.heartbeat_interval_blocks){
+            if((data.block_num - this.lastHeartbeatBlock) > this.heartbeat_interval_seconds * 2){
+                this.lastHeartbeatTime = Date.now();
                 this.lastHeartbeatBlock = data.block_num;
                 console.log(`Listener Heartbeat: ${JSON.stringify(data, null, 2)}`);
             }
@@ -122,13 +126,18 @@ class Listener {
         });
 
         this.activityInterval = setInterval(async () => {
-            this.log(`Interval: ${this.lastReceivedBlock} ${this.streamClient.online}`);
             let getInfo = await this.rpc.get_info();
-            if(true ||this.max_block_diff < ( getInfo.head_block_num - this.lastReceivedBlock)){
+            let headBlock = getInfo.head_block_num;
+            if(this.lastReceivedBlock && headBlock - this.lastReceivedBlock > this.max_blocks_behind){
+                console.log(`Stream is behind by ${headBlock - this.lastReceivedBlock} blocks`);
+            }
+            this.log(`Activity Interval lastHeartbeatTime: ${this.lastHeartbeatTime} lastReceivedBlock: ${this.lastReceivedBlock} online: ${this.streamClient.online}`);
+            if(!this.lastHeartbeatTime || (Date.now() - this.lastHeartbeatTime) > this.heartbeat_interval_seconds * this.missed_heartbeats_for_restart * 1000){
+                this.log(`${name}: Heartbeat missed: ${this.missed_heartbeats_for_restart} times. Restarting stream...`);
                 this.stopStream();
                 await this.startStream(name, account, table, scope, callback);
             }
-        }, this.check_interval_ms);
+        }, this.heartbeat_interval_seconds * 1000);
 
         await this.streamClient.connect();
         console.log(`${name}: Hyperion Stream started !`);

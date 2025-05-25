@@ -18,9 +18,9 @@ class RNGBridgeListener extends EVMListener {
     ){
         this.conf = config.rng.bridge;
         super(oracle, rpc, evm_provider, evm_api, config, {"antelope_account": conf.account, "eosio_evm_scope" : conf.eosio_evm_scope, "eth_account": conf.evm_contract.toLowerCase() }, hyperion, {"name": config.rng.caller.name, "permission": config.rng.caller.permission, "private_key":  config.rng.caller.private_key, "signing_key":  config.rng.caller.signing_key});
-        if(this.conf.check_interval_ms > 0){
-            this.check_interval_ms = this.conf.check_interval_ms; // Override base interval
-        }
+        // if(this.conf.check_interval_ms > 0){
+        //     this.check_interval_ms = this.conf.check_interval_ms; // Override base interval
+        // }
     }
 
     async start() {
