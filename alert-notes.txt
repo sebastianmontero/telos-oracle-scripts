@@ -1,0 +1,33 @@
+message:"Listener Heartbeat"   rng1-telos stream failing
+
+message:"is behind by" rng1-telos stream delayed            > 3 in 5m
+
+
+message:"Listener Heartbeat"   rng1-jungle stream failing
+
+message:"is behind by" rng1-jungle stream delayed 
+
+message:"Listener Heartbeat"   rng2-jungle stream failing
+
+message:"is behind by" rng2-jungle stream delayed
+
+message:"Listener Heartbeat"   rng3-jungle stream failing
+
+message:"is behind by" rng3-jungle stream delayed
+
+
+message:"Listener Heartbeat"   rng1-eos stream failing
+
+message:"is behind by" rng1-eos stream delayed 
+
+message:"Listener Heartbeat"   rng2-eos stream failing
+
+message:"is behind by" rng2-eos stream delayed 
+
+message:"Listener Heartbeat"   rng3-eos stream failing
+
+message:"is behind by" rng3-eos stream delayed 
+
+
+
+

@@ -3,9 +3,11 @@ const { HyperionStreamClient, StreamClientEvents } = require("@eosrio/hyperion-s
 
 async function run() {
   const client = new HyperionStreamClient({
-    endpoint: 'https://jungle.eosusa.io',
+    // endpoint: 'https://jungle.eosusa.io',
     // endpoint: 'https://eos.hyperion.eosrio.io',
     // endpoint: 'https://telos.caleos.io',
+    endpoint: 'https://hyperion.telos.eosdetroit.io',
+    // endpoint: 'https://telos.eosrio.io',
     debug: true,
     libStream: false
   });
